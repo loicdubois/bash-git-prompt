@@ -320,6 +320,8 @@ function we_are_on_repo() {
 
 function update_old_git_prompt() {
   if [[ "${GIT_PROMPT_OLD_DIR_WAS_GIT:-0}" = 0 ]]; then
+    OLD_PROMPT_START="${PROMPT_START}"
+    OLD_PROMPT_END="${PROMPT_END}"
     OLD_GITPROMPT="${PS1}"
   fi
 
@@ -332,6 +334,8 @@ function setGitPrompt() {
   local repo=$(git rev-parse --show-toplevel 2> /dev/null)
   if [[ ! -e "${repo}" ]] && [[ "${GIT_PROMPT_ONLY_IN_REPO-}" = 1 ]]; then
     # we do not permit bash-git-prompt outside git repos, so nothing to do
+    PROMPT_START=${OLD_PROMPT_START}
+    PROMPT_END=${OLD_PROMPT_END}
     PS1="${OLD_GITPROMPT}"
     return
   fi
@@ -649,7 +653,13 @@ function gp_add_virtualenv_to_prompt {
   local ACCUMULATED_VENV_PROMPT=""
   local VENV=""
   if [[ -n "${VIRTUAL_ENV-}" && -z "${VIRTUAL_ENV_DISABLE_PROMPT+x}" ]]; then
-    VENV=$(basename "${VIRTUAL_ENV}")
+    if [[ -n "${VIRTUAL_ENV_PROMPT-}" ]]; then
+      # first trim any starting white space and parenthesis, and then do the same to the end
+      VENV="${VIRTUAL_ENV_PROMPT#"${VIRTUAL_ENV_PROMPT%%[![:space:]]*}("}"
+      VENV="${VENV%")${VENV##*[![:space:]]}"}"
+    else
+      VENV=$(basename "${VIRTUAL_ENV}")
+    fi
     ACCUMULATED_VENV_PROMPT="${ACCUMULATED_VENV_PROMPT}${GIT_PROMPT_VIRTUALENV//_VIRTUALENV_/${VENV}}"
   fi
   if [[ -n "${NODE_VIRTUAL_ENV-}" && -z "${NODE_VIRTUAL_ENV_DISABLE_PROMPT+x}" ]]; then
@@ -681,7 +691,7 @@ function gp_truncate_pwd {
 
 # Sets the window title to the given argument string
 function gp_set_window_title {
-  echo -ne "\[\033]0;"${@}"\007\]"
+  echo -ne "\[\033]0;$1\007\]"
 }
 
 function prompt_callback_default {
